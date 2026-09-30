@@ -39,7 +39,7 @@ Movie Explorer is a frontend movie discovery app built with React, Vite, MUI, Re
 
 Create a .env file in the root of the Frontend project with your TMDb API key:
 
-VITE_TMDB_API_KEY=your_tmdb_api_key_here
+VITE_TMDB_API_KEY=****************
 
 The project includes a sample file at .env.example.
 
@@ -50,9 +50,9 @@ This app uses the TMDb API for trending movies, searches, genre data, details, c
 ## Deployment
 
 Live Demo:
-[Add deployed URL here]
+https://movie-explorer-nine-green.vercel.app/
 
 ## Repository
 
 GitLab Repository:
-[Add repository URL here]
+https://github.com/Chandu5342/Movie_Explorer.git
