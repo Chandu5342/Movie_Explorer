@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import Navbar from './components/Navbar';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { MovieProvider } from './context/MovieContext';
 import FavoritesPage from './pages/Favorites';
 import HomePage from './pages/Home';
 import LoginPage from './pages/Login';
@@ -62,17 +63,19 @@ export default function App() {
       <CssBaseline />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
+          <MovieProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
 
-            <Route element={<ProtectedLayout mode={mode} toggleTheme={toggleTheme} />}>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/favorites" element={<FavoritesPage />} />
-              <Route path="/movie/:id" element={<MovieDetailsPage />} />
-            </Route>
+              <Route element={<ProtectedLayout mode={mode} toggleTheme={toggleTheme} />}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/favorites" element={<FavoritesPage />} />
+                <Route path="/movie/:id" element={<MovieDetailsPage />} />
+              </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </MovieProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
