@@ -4,7 +4,7 @@ const api = axios.create({
   baseURL: 'https://api.themoviedb.org/3',
 });
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || "e533f28086e91dfab032d7823d40e9b7";
 
 const ensureApiKey = () => {
   if (!TMDB_API_KEY) {
@@ -61,27 +61,38 @@ export const searchMovies = async (query, page = 1, filters = {}) => {
 
   if (safeQuery) {
     params.query = safeQuery;
+    if (filters.year) {
+      params.primary_release_year = filters.year;
+    }
   }
 
-  if (filters.genreId) {
+  if (!safeQuery && filters.genreId) {
     params.with_genres = filters.genreId;
   }
 
-  if (filters.year) {
+  if (!safeQuery && filters.year) {
     params.primary_release_year = filters.year;
   }
 
-  if (filters.rating) {
+  if (!safeQuery && filters.rating) {
     params['vote_average.gte'] = Number(filters.rating);
   }
 
   const endpoint = safeQuery ? '/search/movie' : '/discover/movie';
 
   const response = await api.get(endpoint, { params });
+  const results = (response.data.results || []).filter((movie) => {
+    const releaseYear = Number(movie.release_date?.slice(0, 4));
+    const hasGenre = !filters.genreId || movie.genre_ids?.includes(Number(filters.genreId));
+    const hasYear = !filters.year || releaseYear === Number(filters.year);
+    const meetsRating = !filters.rating || Number(movie.vote_average) >= Number(filters.rating);
+
+    return hasGenre && hasYear && meetsRating;
+  });
 
   return {
     ...response.data,
-    results: (response.data.results || []).map(normalizeMovie),
+    results: results.map(normalizeMovie),
   };
 };
 

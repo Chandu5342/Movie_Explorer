@@ -45,48 +45,55 @@ export default function HomePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const triggerSearch = async (nextPage = 1, resetResults = true) => {
+  const getActiveSearchState = () => {
     const trimmedTerm = searchTerm.trim();
-    const hasFilters = Boolean(selectedGenre || selectedYear || selectedRating);
+    const filters = {
+      genreId: selectedGenre,
+      year: selectedYear,
+      rating: selectedRating,
+    };
 
-    if (!trimmedTerm && !hasFilters) {
+    return {
+      trimmedTerm,
+      filters,
+      hasActiveFilters: Boolean(trimmedTerm || filters.genreId || filters.year || filters.rating),
+    };
+  };
+
+  const executeSearch = async ({ nextPage = 1, append = false } = {}) => {
+    const { trimmedTerm, filters, hasActiveFilters } = getActiveSearchState();
+
+    if (!hasActiveFilters) {
       setHasSearched(false);
       setSearchResults([]);
+      setSearchError('');
       return;
     }
 
-    if (resetResults) {
+    if (append) {
+      setLoadingMore(true);
+    } else {
       setLoadingSearch(true);
       setSearchError('');
-    } else {
-      setLoadingMore(true);
     }
 
     try {
-      const response = await searchTmdbMovies(trimmedTerm, nextPage, {
-        genreId: selectedGenre,
-        year: selectedYear,
-        rating: selectedRating,
-      });
-
+      const response = await searchTmdbMovies(trimmedTerm, nextPage, filters);
       const results = response.results || [];
 
-      if (resetResults) {
-        setSearchResults(results);
-      } else {
-        setSearchResults((currentMovies) => [...currentMovies, ...results]);
-      }
-
+      setSearchResults((currentResults) => (append ? [...currentResults, ...results] : results));
       setPage(response.page || nextPage);
       setTotalPages(response.total_pages || 1);
       setHasSearched(true);
 
       if (trimmedTerm) {
         localStorage.setItem(LAST_SEARCH_KEY, trimmedTerm);
+      } else {
+        localStorage.removeItem(LAST_SEARCH_KEY);
       }
     } catch (error) {
       setSearchError(error.message || 'Something went wrong while searching for movies.');
-      if (resetResults) {
+      if (!append) {
         setSearchResults([]);
       }
     } finally {
@@ -153,14 +160,6 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!hasSearched && !searchTerm.trim() && !selectedGenre && !selectedYear && !selectedRating) {
-      return;
-    }
-
-    triggerSearch(1, true);
-  }, [selectedGenre, selectedYear, selectedRating]);
-
-  useEffect(() => {
     if (!sentinelRef.current || page >= totalPages || !hasSearched) {
       return undefined;
     }
@@ -168,7 +167,7 @@ export default function HomePage() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !loadingSearch && !loadingMore) {
-          triggerSearch(page + 1, false);
+          executeSearch({ nextPage: page + 1, append: true });
         }
       },
       { rootMargin: '200px' }
@@ -177,27 +176,45 @@ export default function HomePage() {
     observer.observe(sentinelRef.current);
 
     return () => observer.disconnect();
-  }, [hasSearched, page, totalPages, loadingSearch, loadingMore]);
+  }, [hasSearched, page, totalPages, loadingSearch, loadingMore, selectedGenre, selectedYear, selectedRating, searchTerm]);
 
   const handleSearch = async (event) => {
     event.preventDefault();
 
-    const trimmedTerm = searchTerm.trim();
+    const { hasActiveFilters } = getActiveSearchState();
 
-    if (!trimmedTerm && !selectedGenre && !selectedYear && !selectedRating) {
+    if (!hasActiveFilters) {
       setSearchError('Please enter a movie title or choose a filter.');
       return;
     }
 
-    await triggerSearch(1, true);
+    setHasSearched(true);
+    await executeSearch({ nextPage: 1, append: false });
+  };
+
+  const handleApplyFilters = async () => {
+    const { hasActiveFilters } = getActiveSearchState();
+
+    if (!hasActiveFilters) {
+      setSearchError('Please enter a movie title or choose a filter.');
+      return;
+    }
+
+    setHasSearched(true);
+    await executeSearch({ nextPage: 1, append: false });
   };
 
   const handleClearFilters = () => {
+    setSearchTerm('');
     setSelectedGenre('');
     setSelectedYear('');
     setSelectedRating('');
     setSearchError('');
-    setHasSearched(Boolean(searchTerm.trim()));
+    setHasSearched(false);
+    setSearchResults([]);
+    setPage(1);
+    setTotalPages(1);
+    localStorage.removeItem(LAST_SEARCH_KEY);
   };
 
   return (
@@ -222,6 +239,9 @@ export default function HomePage() {
             />
             <Button type="submit" variant="contained" size="large" startIcon={<SearchRounded />} sx={{ minWidth: 170 }}>
               Search
+            </Button>
+            <Button type="button" variant="outlined" size="large" onClick={handleApplyFilters} sx={{ minWidth: 170 }}>
+              Apply filters
             </Button>
           </Box>
 
@@ -273,13 +293,13 @@ export default function HomePage() {
           </Alert>
         )}
 
-        {loadingTrending ? (
+        {!hasSearched && (loadingTrending ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
             <CircularProgress />
           </Box>
         ) : (
           <MovieGrid movies={trendingMovies} title="Trending movies" emptyMessage="No trending movies available right now." />
-        )}
+        ))}
 
         {hasSearched && (
           <Box>
