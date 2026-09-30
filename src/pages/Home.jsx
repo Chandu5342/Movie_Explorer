@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -12,19 +16,84 @@ import {
 import { SearchRounded } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import MovieGrid from '../components/MovieGrid';
-import { getTrendingMovies, searchMovies as searchTmdbMovies } from '../services/tmdbApi';
+import { getGenres, getTrendingMovies, searchMovies as searchTmdbMovies } from '../services/tmdbApi';
 
 const LAST_SEARCH_KEY = 'movieExplorerLastSearch';
+const YEARS = Array.from({ length: 30 }, (_, index) => new Date().getFullYear() - index);
+const RATING_OPTIONS = [
+  { label: 'All ratings', value: '' },
+  { label: '8.0+', value: '8' },
+  { label: '7.0+', value: '7' },
+  { label: '6.0+', value: '6' },
+];
 
 export default function HomePage() {
   const { user } = useAuth();
+  const sentinelRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem(LAST_SEARCH_KEY) || '');
   const [trendingMovies, setTrendingMovies] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
+  const [genres, setGenres] = useState([]);
+  const [selectedGenre, setSelectedGenre] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedRating, setSelectedRating] = useState('');
   const [loadingTrending, setLoadingTrending] = useState(true);
   const [loadingSearch, setLoadingSearch] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [hasSearched, setHasSearched] = useState(Boolean(localStorage.getItem(LAST_SEARCH_KEY)));
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const triggerSearch = async (nextPage = 1, resetResults = true) => {
+    const trimmedTerm = searchTerm.trim();
+    const hasFilters = Boolean(selectedGenre || selectedYear || selectedRating);
+
+    if (!trimmedTerm && !hasFilters) {
+      setHasSearched(false);
+      setSearchResults([]);
+      return;
+    }
+
+    if (resetResults) {
+      setLoadingSearch(true);
+      setSearchError('');
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      const response = await searchTmdbMovies(trimmedTerm, nextPage, {
+        genreId: selectedGenre,
+        year: selectedYear,
+        rating: selectedRating,
+      });
+
+      const results = response.results || [];
+
+      if (resetResults) {
+        setSearchResults(results);
+      } else {
+        setSearchResults((currentMovies) => [...currentMovies, ...results]);
+      }
+
+      setPage(response.page || nextPage);
+      setTotalPages(response.total_pages || 1);
+      setHasSearched(true);
+
+      if (trimmedTerm) {
+        localStorage.setItem(LAST_SEARCH_KEY, trimmedTerm);
+      }
+    } catch (error) {
+      setSearchError(error.message || 'Something went wrong while searching for movies.');
+      if (resetResults) {
+        setSearchResults([]);
+      }
+    } finally {
+      setLoadingSearch(false);
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     const loadTrending = async () => {
@@ -38,7 +107,17 @@ export default function HomePage() {
       }
     };
 
+    const loadGenres = async () => {
+      try {
+        const response = await getGenres();
+        setGenres(response);
+      } catch (error) {
+        setSearchError(error.message || 'Unable to load movie genres right now.');
+      }
+    };
+
     loadTrending();
+    loadGenres();
   }, []);
 
   useEffect(() => {
@@ -50,10 +129,18 @@ export default function HomePage() {
 
     const restoreLastSearch = async () => {
       setLoadingSearch(true);
+      setHasSearched(true);
 
       try {
-        const response = await searchTmdbMovies(savedSearch);
+        const response = await searchTmdbMovies(savedSearch, 1, {
+          genreId: selectedGenre,
+          year: selectedYear,
+          rating: selectedRating,
+        });
+
         setSearchResults(response.results || []);
+        setPage(response.page || 1);
+        setTotalPages(response.total_pages || 1);
         setSearchError('');
       } catch (error) {
         setSearchError(error.message || 'Unable to load your last searched movie.');
@@ -65,30 +152,52 @@ export default function HomePage() {
     restoreLastSearch();
   }, []);
 
+  useEffect(() => {
+    if (!hasSearched && !searchTerm.trim() && !selectedGenre && !selectedYear && !selectedRating) {
+      return;
+    }
+
+    triggerSearch(1, true);
+  }, [selectedGenre, selectedYear, selectedRating]);
+
+  useEffect(() => {
+    if (!sentinelRef.current || page >= totalPages || !hasSearched) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingSearch && !loadingMore) {
+          triggerSearch(page + 1, false);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(sentinelRef.current);
+
+    return () => observer.disconnect();
+  }, [hasSearched, page, totalPages, loadingSearch, loadingMore]);
+
   const handleSearch = async (event) => {
     event.preventDefault();
 
     const trimmedTerm = searchTerm.trim();
 
-    if (!trimmedTerm) {
-      setSearchError('Please enter a movie title to search.');
+    if (!trimmedTerm && !selectedGenre && !selectedYear && !selectedRating) {
+      setSearchError('Please enter a movie title or choose a filter.');
       return;
     }
 
-    setHasSearched(true);
-    setLoadingSearch(true);
-    setSearchError('');
+    await triggerSearch(1, true);
+  };
 
-    try {
-      const response = await searchTmdbMovies(trimmedTerm);
-      setSearchResults(response.results || []);
-      localStorage.setItem(LAST_SEARCH_KEY, trimmedTerm);
-    } catch (error) {
-      setSearchError(error.message || 'Something went wrong while searching for movies.');
-      setSearchResults([]);
-    } finally {
-      setLoadingSearch(false);
-    }
+  const handleClearFilters = () => {
+    setSelectedGenre('');
+    setSelectedYear('');
+    setSelectedRating('');
+    setSearchError('');
+    setHasSearched(Boolean(searchTerm.trim()));
   };
 
   return (
@@ -115,6 +224,47 @@ export default function HomePage() {
               Search
             </Button>
           </Box>
+
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mt: 3 }}>
+            <FormControl fullWidth>
+              <InputLabel>Genre</InputLabel>
+              <Select value={selectedGenre} label="Genre" onChange={(event) => setSelectedGenre(event.target.value)}>
+                <MenuItem value="">All genres</MenuItem>
+                {genres.map((genre) => (
+                  <MenuItem key={genre.id} value={genre.id}>
+                    {genre.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Year</InputLabel>
+              <Select value={selectedYear} label="Year" onChange={(event) => setSelectedYear(event.target.value)}>
+                <MenuItem value="">All years</MenuItem>
+                {YEARS.map((year) => (
+                  <MenuItem key={year} value={year}>
+                    {year}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Rating</InputLabel>
+              <Select value={selectedRating} label="Rating" onChange={(event) => setSelectedRating(event.target.value)}>
+                {RATING_OPTIONS.map((option) => (
+                  <MenuItem key={option.label} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Button variant="outlined" onClick={handleClearFilters} sx={{ minWidth: 180 }}>
+              Clear filters
+            </Button>
+          </Stack>
         </Paper>
 
         {searchError && (
@@ -138,11 +288,23 @@ export default function HomePage() {
                 <CircularProgress />
               </Box>
             ) : (
-              <MovieGrid
-                movies={searchResults}
-                title={searchTerm ? `Search results for “${searchTerm}”` : 'Search results'}
-                emptyMessage="No movies found for this search. Try another title."
-              />
+              <>
+                <MovieGrid
+                  movies={searchResults}
+                  title={searchTerm ? `Search results for “${searchTerm}”` : 'Filtered results'}
+                  emptyMessage="No movies found for this search. Try another title or clear a filter."
+                />
+
+                {page < totalPages && !loadingMore && (
+                  <Box ref={sentinelRef} sx={{ height: 20, mt: 3 }} />
+                )}
+
+                {loadingMore && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <CircularProgress />
+                  </Box>
+                )}
+              </>
             )}
           </Box>
         )}

@@ -32,22 +32,52 @@ export const getTrendingMovies = async () => {
   return (response.data.results || []).map(normalizeMovie);
 };
 
-export const searchMovies = async (query, page = 1) => {
-  const safeQuery = query.trim();
+export const getGenres = async () => {
+  ensureApiKey();
 
-  if (!safeQuery) {
+  const response = await api.get('/genre/movie/list', {
+    params: {
+      api_key: TMDB_API_KEY,
+    },
+  });
+
+  return response.data.genres || [];
+};
+
+export const searchMovies = async (query, page = 1, filters = {}) => {
+  const safeQuery = query.trim();
+  const hasFilters = Boolean(filters.genreId || filters.year || filters.rating);
+
+  if (!safeQuery && !hasFilters) {
     return { results: [], total_pages: 0, page: 1 };
   }
 
   ensureApiKey();
 
-  const response = await api.get('/search/movie', {
-    params: {
-      api_key: TMDB_API_KEY,
-      query: safeQuery,
-      page,
-    },
-  });
+  const params = {
+    api_key: TMDB_API_KEY,
+    page,
+  };
+
+  if (safeQuery) {
+    params.query = safeQuery;
+  }
+
+  if (filters.genreId) {
+    params.with_genres = filters.genreId;
+  }
+
+  if (filters.year) {
+    params.primary_release_year = filters.year;
+  }
+
+  if (filters.rating) {
+    params['vote_average.gte'] = Number(filters.rating);
+  }
+
+  const endpoint = safeQuery ? '/search/movie' : '/discover/movie';
+
+  const response = await api.get(endpoint, { params });
 
   return {
     ...response.data,
