@@ -1,122 +1,80 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useMemo, useState } from 'react';
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import Navbar from './components/Navbar';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import FavoritesPage from './pages/Favorites';
+import HomePage from './pages/Home';
+import LoginPage from './pages/Login';
+import MovieDetailsPage from './pages/MovieDetailsPage';
 
-function App() {
-  const [count, setCount] = useState(0)
+function ProtectedLayout({ mode, toggleTheme }) {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      <Navbar mode={mode} toggleTheme={toggleTheme} />
+      <Outlet />
     </>
-  )
+  );
 }
 
-export default App
+export default function App() {
+  const [mode, setMode] = useState(() => {
+    const savedTheme = localStorage.getItem('movieExplorerTheme');
+    return savedTheme === 'dark' ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('movieExplorerTheme', mode);
+  }, [mode]);
+
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode,
+          primary: { main: '#7c3aed' },
+          secondary: { main: '#f59e0b' },
+          background: {
+            default: mode === 'dark' ? '#0f172a' : '#f5f7fb',
+            paper: mode === 'dark' ? '#111827' : '#ffffff',
+          },
+        },
+        shape: { borderRadius: 12 },
+        typography: {
+          fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+        },
+      }),
+    [mode]
+  );
+
+  const toggleTheme = () => {
+    setMode((currentMode) => (currentMode === 'dark' ? 'light' : 'dark'));
+  };
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+
+            <Route element={<ProtectedLayout mode={mode} toggleTheme={toggleTheme} />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/favorites" element={<FavoritesPage />} />
+              <Route path="/movie/:id" element={<MovieDetailsPage />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
+  );
+}
