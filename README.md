@@ -1,16 +1,58 @@
-# React + Vite
+# Movie Explorer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Movie Explorer is a frontend movie discovery app built with React, Vite, MUI, React Router, and TMDb. It lets users log in, browse trending movies, search by title, filter movies by genre/year/rating, view cast and detail information, watch trailers, and save favorites locally.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- User login interface
+- Trending movies section
+- Movie search with last-search persistence
+- Movie cards with poster, title, release year, and rating
+- Movie details page with overview, genres, cast, and trailer link
+- Favorites page with localStorage persistence
+- Infinite scrolling and paginated results
+- Genre, year, and rating filters
+- Dark/light theme toggle
+- Responsive UI
+- API error handling
 
-## React Compiler
+## Technologies
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React
+- Vite
+- JavaScript
+- Axios
+- Material UI
+- React Router
+- Context API
+- TMDb API
 
-## Expanding the ESLint configuration
+## Setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Open the project folder.
+2. Install dependencies:
+   npm install
+3. Start the development server:
+   npm run dev
+
+## Environment Variables
+
+Create a .env file in the root of the Frontend project with your TMDb API key:
+
+VITE_TMDB_API_KEY=your_tmdb_api_key_here
+
+The project includes a sample file at .env.example.
+
+## API
+
+This app uses the TMDb API for trending movies, searches, genre data, details, credits, and trailers.
+
+## Deployment
+
+Live Demo:
+[Add deployed URL here]
+
+## Repository
+
+GitLab Repository:
+[Add repository URL here]
