@@ -1,3 +1,4 @@
+
 # Movie Explorer
 
 Movie Explorer is a frontend movie discovery app built with React, Vite, MUI, React Router, and TMDb. It lets users log in, browse trending movies, search by title, filter movies by genre/year/rating, view cast and detail information, watch trailers, and save favorites locally.
@@ -27,6 +28,39 @@ Movie Explorer is a frontend movie discovery app built with React, Vite, MUI, Re
 - Context API
 - TMDb API
 
+## Project Structure
+
+```text
+Frontend/
+├── public/                       # Static public assets
+├── src/
+│   ├── assets/                   # App images and bundled assets
+│   ├── components/
+│   │   ├── MovieCard.jsx         # Individual movie card
+│   │   ├── MovieGrid.jsx         # Movie list grid
+│   │   └── Navbar.jsx            # Main navigation
+│   ├── context/
+│   │   ├── AuthContext.jsx       # Authentication state
+│   │   └── MovieContext.jsx      # Favorites state
+│   ├── pages/
+│   │   ├── Favorites.jsx         # Saved movies
+│   │   ├── Home.jsx              # Trending, search, and filters
+│   │   ├── Login.jsx             # Login page
+│   │   └── MovieDetailsPage.jsx  # Movie details, cast, and trailer
+│   ├── services/
+│   │   └── tmdbApi.js            # TMDb API requests
+│   ├── App.jsx                   # App routes and theme
+│   ├── App.css                   # App-level styles
+│   ├── index.css                 # Global styles
+│   └── main.jsx                  # Application entry point
+├── .env.example                 # Environment variable template
+├── .gitignore                   # Ignored files, including local .env
+├── index.html                   # HTML entry point
+├── package.json                 # Dependencies and scripts
+├── vite.config.js               # Vite configuration
+└── README.md                    # Project documentation
+```
+
 ## Setup
 
 1. Open the project folder.
@@ -39,7 +73,7 @@ Movie Explorer is a frontend movie discovery app built with React, Vite, MUI, Re
 
 Create a .env file in the root of the Frontend project with your TMDb API key:
 
-VITE_TMDB_API_KEY=****************
+VITE_TMDB_API_KEY=your_tmdb_api_key_here
 
 The project includes a sample file at .env.example.
 
@@ -56,3 +90,4 @@ https://movie-explorer-nine-green.vercel.app/
 
 GitLab Repository:
 https://github.com/Chandu5342/Movie_Explorer.git
+
